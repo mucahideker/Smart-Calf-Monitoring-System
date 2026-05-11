@@ -1,0 +1,6 @@
+calfData_b435_d220319/
+__pycache__/
+*.xlsx
+.vs/
+.venv/
+.idea/
