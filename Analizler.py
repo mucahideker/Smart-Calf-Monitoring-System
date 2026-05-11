@@ -57,83 +57,55 @@ def buzagi_raporu(df, buzagi_no):
 
 
 def stres_grafigi_ciz(df, buzagi_no):
-    # guvenlik icin kopyala
+    # 1. Hedef buzağı verisini güvenli şekilde kopyala
     ozel_df = df[df['Buzagi_ID'] == buzagi_no].copy()
 
     if ozel_df.empty:
-        print(f"\n[!] HATA: {buzagi_no} numarali buzagi tabloda bulunamadi!")
+        print(f"\n[!] HATA: {buzagi_no} bulunamadı!")
         return
 
-    # tarihleri parcala
-    ozel_df['Tarih'] = pd.to_datetime(ozel_df['Tarih'], format='%Y-%m-%d', errors='coerce')
-    ozel_df = ozel_df.dropna(subset=['Tarih']).copy()
+    # 2. Tarih formatını takvime çevir
+    ozel_df['Tarih'] = pd.to_datetime(ozel_df['Tarih'], errors='coerce')
+    ozel_df = ozel_df.dropna(subset=['Tarih'])
 
-    # en az 2 gun  veri olmasi kontrol
-    essiz_gun_sayisi = ozel_df['Tarih'].nunique()
-    if essiz_gun_sayisi < 2:
-        print(f"\n[!] UYARI: {buzagi_no} icin sadece {essiz_gun_sayisi} gunluk veri var.")
-        print("    Cizgi grafigi olusturabilmek icin en az 2 farkli gune ait log gereklidir!")
-        return
+    # 3. Akıllı Stres Tanımı (Hata A Çözümü)
+    # Stres = Süt hakkı yok + Süt içemedi + Emziğe vurdu (Agresiflik)
+    ozel_df['Stres_Mi'] = ((ozel_df['Hak_Ettigi_Sut_ml'] == 0) &
+                           (ozel_df['Ictigi_Sut_ml'] == 0) &
+                           (ozel_df['Emzik_Vurma_Diaphragm'] > 0)).astype(int)
 
-    ozel_df['Hak_Ettigi_Sut_ml'] = pd.to_numeric(ozel_df['Hak_Ettigi_Sut_ml'], errors='coerce').fillna(0)
-    ozel_df['Ictigi_Sut_ml'] = pd.to_numeric(ozel_df['Ictigi_Sut_ml'], errors='coerce').fillna(0)
+    # 4. Günlük Oran Hesaplama (Hata B Çözümü)
+    # Her gün kaç giriş yapıldı?
+    gunluk_toplam_giris = ozel_df.groupby('Tarih').size()
+    # Her gün kaçı 'Doğrulanmış Stres' idi?
+    gunluk_stres_sayisi = ozel_df.groupby('Tarih')['Stres_Mi'].sum()
 
-    # stres hesaplama
-    stresli = ozel_df[(ozel_df['Hak_Ettigi_Sut_ml'] == 0) & (ozel_df['Ictigi_Sut_ml'] == 0)]
-    stres_gunluk = stresli.groupby('Tarih').size()
+    # Oranla: (Stresli Giriş / Toplam Giriş) * 100
+    stres_orani = (gunluk_stres_sayisi / gunluk_toplam_giris) * 100
 
-    # bosluklari doldurma
-    ilk_gun = ozel_df['Tarih'].min()
-    son_gun = ozel_df['Tarih'].max()
-    tum_takvim = pd.date_range(start=ilk_gun, end=son_gun)
-    stres_gunluk = stres_gunluk.reindex(tum_takvim, fill_value=0)
+    # 5. Eksik Günleri Tamamla
+    tum_takvim = pd.date_range(start=ozel_df['Tarih'].min(), end=ozel_df['Tarih'].max())
+    stres_orani = stres_orani.reindex(tum_takvim, fill_value=0)
 
-    # 6. SADELESTIRILMIS GRAFIK CIZIMI
+    # 6. Profesyonel Grafik Çizimi
     plt.figure(figsize=(14, 6), facecolor='#f8f9fa')
-    ax = plt.gca()
-    ax.set_facecolor('#ffffff')
+    plt.plot(stres_orani.index, stres_orani.values, marker='o', color='#d00000', linewidth=2,
+             label='% Günlük Stres Yoğunluğu')
+    plt.fill_between(stres_orani.index, stres_orani.values, color='#d00000', alpha=0.15)
 
-    # grafikte kirmizi cizdirme
-    plt.plot(stres_gunluk.index, stres_gunluk.values,
-             marker='o', color='#e63946', linewidth=2.5, markersize=6, label='Gunluk Bos Cikis (Stres)')
+    # Etiketler ve Zirve Noktası
+    if not stres_orani.empty:
+        max_v = stres_orani.max()
+        max_t = stres_orani.idxmax()
+        plt.annotate(f'Kritik Gün: %{max_v:.1f}', xy=(max_t, max_v), xytext=(max_t, max_v + 10),
+                     arrowprops=dict(facecolor='black', shrink=0.05), fontsize=10, fontweight='bold')
 
-    # grafik cizdirme
-    plt.fill_between(stres_gunluk.index, stres_gunluk.values, color='#e63946', alpha=0.1)
-
-    # stres zirve noktasini bulup isaretleme
-    if not stres_gunluk.empty and stres_gunluk.max() > 0:
-        max_stres_degeri = stres_gunluk.max()
-        max_stres_tarihi = stres_gunluk.idxmax()
-        plt.annotate(f'Zirve Stres:\n{int(max_stres_degeri)} Kez',
-                     xy=(max_stres_tarihi, max_stres_degeri),
-                     xytext=(max_stres_tarihi, max_stres_degeri + (max_stres_degeri * 0.15)),
-                     arrowprops=dict(facecolor='#1d3557', arrowstyle='wedge', alpha=0.8),
-                     fontsize=10, fontweight='bold', color='#1d3557', ha='center')
-
-    # basliklar etiketler
-    plt.title(f"[{buzagi_no}] Hayvan Davranis Analizi: Gunluk Stres Grafigi", fontsize=15, fontweight='bold', pad=15)
-    plt.xlabel("Beslenme Takvimi", fontsize=12, fontweight='bold', labelpad=10)
-    plt.ylabel("Karsiliksiz Ziyaret", fontsize=12, fontweight='bold', labelpad=10)
-    plt.grid(True, linestyle='--', alpha=0.4, which='major')
-
-    # ================= tarih ekseni =================
-    gun_sayisi = len(tum_takvim)
-    # Eger takvim cok uzunsa (orn: 60 gun) tarihleri ust uste bindirmemek icin aralikli yazar
-    if gun_sayisi > 30:
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=int(gun_sayisi / 15)))
-    else:
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Az gun varsa her gunu yazar
-
-    # Tarihleri dil bagimsiz, net GG-AA-YYYY formatina cevirir (Orn: 15-12-2024)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
-    plt.xticks(rotation=45, ha='right')
-    # ========================================================================
-
-    # Sag ve Ustteki cirkin cerceve cizgilerini kaldirma
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-
-    plt.legend(loc='upper right', frameon=True, shadow=True, fontsize=11)
+    plt.title(f"[{buzagi_no}] Gelişmiş Davranış Analizi: Doğrulanmış Stres Oranı", fontsize=14)
+    plt.ylabel("Stres Yoğunluğu (%)", fontsize=12)
+    plt.xlabel("Zaman Çizelgesi", fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, 110)  # Yüzde olduğu için 0-100 arası
+    plt.legend()
     plt.tight_layout()
     plt.show()
 

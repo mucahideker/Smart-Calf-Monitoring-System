@@ -64,11 +64,36 @@ print(f"Toplam {len(df)} benzersiz satirlik veri tablosu hazirlandi!\n")
 
 # ANALIZINI ISTEDIGIMIZ BUZAGININ TAGINI BURAYA GIRIYORUZ
 
-hedef_buzagi = "TR0001-1911"
+# --- BURADAN İTİBAREN YENİ KOD BAŞLIYOR ---
 
-Analizler.buzagi_raporu(df, hedef_buzagi)
-Analizler.sabirsizlik_analizi(df, hedef_buzagi)
-Analizler.stres_grafigi_ciz(df, hedef_buzagi)
-Analizler.suru_stres_siralamasi_excel(df)
+if not df.empty:
+    # Mevcut Buzağıların sadece ID ve Cinsiyetini Tablo Halinde Gösterir
+    mevcut_buzagilar = df[['Buzagi_ID', 'Cinsiyet']].drop_duplicates().sort_values(by='Buzagi_ID')
 
-Analizler.ham_verileri_excele_aktar("calfData_b435_d220319")
+    print("\n" + "=" * 40)
+    print("--- SİSTEMDE KAYITLI BUZAĞI LİSTESİ ---")
+    print("=" * 40)
+    # head(20) diyerek ilk 20 tanesini gösteriyoruz ki terminal çok dolmasın
+    print(mevcut_buzagilar.head(20).to_string(index=False))
+    print("..." if len(mevcut_buzagilar) > 20 else "")
+    print(f"Toplam {len(mevcut_buzagilar)} farklı buzağı bulundu.")
+    print("=" * 40 + "\n")
+
+    # buzağı seçim
+    secilen_id = input("Analiz etmek istediğiniz Buzağı ID'sini girin (Örn: TR0001-1911): ").strip()
+
+    if secilen_id in df['Buzagi_ID'].values:
+        hedef_buzagi = secilen_id
+
+        Analizler.buzagi_raporu(df, hedef_buzagi)
+        Analizler.sabirsizlik_analizi(df, hedef_buzagi)
+        Analizler.stres_grafigi_ciz(df, hedef_buzagi)
+
+        print("\n[*] Sürü genel raporları hazırlanıyor...")
+        Analizler.suru_stres_siralamasi_excel(df)
+        Analizler.ham_verileri_excele_aktar("calfData_b435_d220319")
+
+        print("\n[+] Tüm işlemler başarıyla tamamlandı.")
+
+    else:
+        print(f"\n[!] HATA: '{secilen_id}' listede bulunamadı. Lütfen tam ID'yi doğru yazdığınızdan emin olun.")
