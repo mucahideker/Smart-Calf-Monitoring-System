@@ -39,6 +39,7 @@ for dosya in json_dosyalari:
                                 satir = {
                                     "Buzagi_ID": benzersiz_kimlik,  # Analiz fonksiyonun buraya bakacak
                                     "Gercek_Kuepe_No": kuepe_no,  # Gerektiginde Excelde filtrelemek icin
+                                    "calfCode": calf_code,
                                     "Cinsiyet": cinsiyet,
                                     "Tarih": tarih,
                                     "Saat": saat,
