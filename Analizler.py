@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
@@ -171,6 +173,7 @@ def sabirsizlik_analizi(df, buzagi_no):
 
 
 def ham_verileri_excele_aktar(klasor_yolu, dosya_adi="Tum_Ham_Veriler.xlsx"):
+
     import os
     import glob
     import json
@@ -294,3 +297,50 @@ def ham_verileri_excele_aktar(klasor_yolu, dosya_adi="Tum_Ham_Veriler.xlsx"):
         print(f"[+] BASARILI: '{dosya_adi}' olusturuldu.")
     except Exception as e:
         print(f"[!] Kayit hatasi: {e}")
+
+
+def suru_mesguliyet_tahmini_regresyon(df):
+    # 1. Mantıksız verileri filtrele
+    model_df = df[(df['Iceride_Kalma_sn'] > 5) & (df['Iceride_Kalma_sn'] < 1200) & (df['Vakum_Suresi_sn'] >= 0)].copy()
+    
+    # Yeterli veri yoksa sessizce fonksiyondan çık
+    if len(model_df) < 50:
+        return
+
+    # 2. Girdiler (X) ve Çıktı (y)
+    X = model_df[['Hak_Ettigi_Sut_ml', 'Ictigi_Sut_ml', 'Vakum_Suresi_sn', 'Emzik_Vurma_Diaphragm']]
+    y = model_df['Iceride_Kalma_sn']
+
+    # 3. Veriyi Bölme (%80 Eğitim, %20 Test)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # 4. Modeli Eğit ve Tahmin Al
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    # =========================================================================
+    # 5. SADECE GRAFİK ÇİZİMİ
+    # =========================================================================
+    plt.style.use('dark_background')
+    fig, ax = plt.subplots(figsize=(10, 6), facecolor='#1e1e1e')
+    ax.set_facecolor('#1e1e1e')
+
+    # Dağılım noktaları
+    plt.scatter(y_test, y_pred, color='#00ffcc', alpha=0.4, edgecolors='none', s=25, label='Yapay Zeka Tahminleri')
+
+    # Regresyon Doğrusu
+    min_val = min(min(y_test), min(y_pred))
+    max_val = max(max(y_test), max(y_pred))
+    plt.plot([min_val, max_val], [min_val, max_val], color='#ff3366', linewidth=2, linestyle='--', label='Regresyon Doğrusu')
+
+    # Grafik Süslemeleri
+    plt.title(f"İstasyon Meşguliyet Süresi Optimizasyonu ({len(model_df)} Temiz Kayıt)\nGerçekleşen Süre vs Model Tahmini", fontsize=14, color='#f8f9fa', pad=15)
+    plt.xlabel("Sensörün Ölçtüğü Gerçek İçeride Kalma Süresi (sn)", fontsize=12, color='#ced4da')
+    plt.ylabel("Modelin Tahmin Ettiği Süre (sn)", fontsize=12, color='#ced4da')
+    
+    plt.grid(True, color='#444444', alpha=0.4, linestyle=':')
+    plt.legend(facecolor='#2d2d2d', edgecolor='#444444', labelcolor='white')
+    
+    plt.tight_layout()
+    plt.show(block=True)
