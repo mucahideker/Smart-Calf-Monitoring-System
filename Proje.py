@@ -31,15 +31,6 @@ for dosya in json_dosyalari:
                 if "visits" in stat:
                     for visit in stat["visits"]:
                         tarih = visit.get("date", "Tarih Yok")
-                        
-                        
-                        
-                        total_bilgisi = visit.get("total", {})
-                        gunluk_kilo = total_bilgisi.get("weight", 0)
-                        gunluk_hiz = total_bilgisi.get("averageSpeed", 0)
-                        
-                        # ------------------------------------------------------
-
                         if "data" in visit:
                             for detay in visit["data"]:
                                 saat = detay.get("hour")
@@ -56,10 +47,7 @@ for dosya in json_dosyalari:
                                     "Ictigi_Sut_ml": detay.get("consumption", 0),
                                     "Vakum_Suresi_sn": detay.get("vacuumTime", 0),
                                     "Iceride_Kalma_sn": detay.get("passingTime", 0),
-                                    "Emzik_Vurma_Diaphragm": detay.get("diaphragm", 0),
-                                    "Icme_Hizi": detay.get("averageSpeed", gunluk_hiz),
-                                    "Kilo": detay.get("weight", gunluk_kilo)
-                                    
+                                    "Emzik_Vurma_Diaphragm": detay.get("diaphragm", 0)
                                 }
 
                                 anahtar = (benzersiz_kimlik, tarih, saat)
@@ -102,9 +90,8 @@ if not df.empty:
         Analizler.stres_grafigi_ciz(df, hedef_buzagi)
 
         print("\n[*] Sürü genel raporları hazırlanıyor...")
-        #Analizler.suru_stres_siralamasi_excel(df)
-        #Analizler.ham_verileri_excele_aktar("calfData_b435_d220319")
-        Analizler.suru_mesguliyet_tahmini_regresyon(df)
+        Analizler.suru_stres_siralamasi_excel(df)
+        Analizler.ham_verileri_excele_aktar("calfData_b435_d220319")
 
         print("\n[+] Tüm işlemler başarıyla tamamlandı.")
 

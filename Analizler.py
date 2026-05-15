@@ -109,7 +109,7 @@ def stres_grafigi_ciz(df, buzagi_no):
     plt.ylim(0, 110)  # Yüzde olduğu için 0-100 arası
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.tight_layout()
 
 
 def suru_stres_siralamasi_excel(df):
